@@ -1,4 +1,4 @@
-ARG base_image=alpine:3.20
+ARG base_image=debian:bookworm-slim
 
 FROM $base_image AS core
 
@@ -26,9 +26,9 @@ LABEL com.newrelic.image.version=$image_version \
 ENV NRIA_IS_CONTAINERIZED true
 ENV NRIA_OVERRIDE_HOST_ROOT /host
 
-RUN apk --no-cache upgrade
+RUN apt update
 
-RUN apk add --no-cache --upgrade \
+RUN apt install -y \
     ca-certificates \
     # Embed required dlls:
     # ldd /usr/bin/newrelic-infra
@@ -36,12 +36,12 @@ RUN apk add --no-cache --upgrade \
     #   libpthread.so.0 => /lib64/ld-linux-x86-64.so.2 (0x7f2bbbd0f000)
     #   libc.so.6 => /lib64/ld-linux-x86-64.so.2 (0x7f2bbbd0f000)
     # As musl and glibc are compatible, this symlink fixes the missing dependency
-    && mkdir /lib64 \
-    && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2 \
-    && apk add --no-cache tini
+#     && mkdir /lib64 \
+#     && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2 \
+    && apt install -y tini
 
 # Tini is now available at /sbin/tini
-ENTRYPOINT ["/sbin/tini", "--"]
+ENTRYPOINT ["tini", "--"]
 CMD ["/usr/bin/newrelic-infra-service"]
 
 #################################
@@ -49,7 +49,7 @@ CMD ["/usr/bin/newrelic-infra-service"]
 #################################
 FROM core AS forwarder
 
-RUN apk add --no-cache \
+RUN apt install --no-cache \
         curl
 
 RUN addgroup -g 2000 nri-agent && adduser -D -H -u 1000 -G nri-agent nri-agent
@@ -79,7 +79,7 @@ LABEL com.newrelic.nri-docker.version=$nri_docker_version \
       com.newrelic.nri-flex.version=$nri_flex_version \
       com.newrelic.nri-prometheus.version=$nri_prometheus_version
 
-RUN apk add --no-cache \
+RUN apt install -y \
         ntpsec \
         curl
 
